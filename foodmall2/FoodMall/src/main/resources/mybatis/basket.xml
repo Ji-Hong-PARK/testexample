@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="basket">
+
+	<select id="list" resultType="BasketJoin">
+		SELECT product.category_id, category.category_name, basket.product_id, product_name, price, mileage, image, count
+		FROM basket, product, category
+		WHERE member_id=#{memberId} AND basket.product_id = product.product_id AND product.category_id = category.category_id
+		ORDER BY basket_date
+	</select>
+	
+	<insert id="add">
+		INSERT INTO basket (member_id, product_id, count)
+		VALUES (#{memberId}, #{productId}, 1)
+	</insert>
+	
+	<select id="check" resultType="Integer">
+		SELECT COUNT(*)
+		FROM basket
+		WHERE member_id = #{memberId} AND product_id = #{productId}
+	</select>
+	
+	
+	<delete id="delete">
+		DELETE FROM basket
+		WHERE member_id=#{memberId} AND product_id=#{productId}
+	</delete>
+		
+	<select id="count" resultType="Integer">
+		SELECT COUNT(*)
+		FROM basket
+		WHERE member_id=#{memberId}
+	</select>
+
+</mapper>

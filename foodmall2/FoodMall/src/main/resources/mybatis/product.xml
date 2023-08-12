@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="product">
+
+	<sql id="search">
+		SELECT * FROM product JOIN category on(product.category_id = category.category_id)
+		
+		<where>	
+			<choose>
+				<when test="search == 0">
+					product_name LIKE CONCAT(CONCAT('%', #{keyword}), '%')
+				</when>
+				<when test="search == 1">
+					product_id LIKE CONCAT(CONCAT('%', #{keyword}), '%')
+				</when>
+				<otherwise>
+					product_name LIKE CONCAT(CONCAT('%', #{keyword}), '%')
+				</otherwise>
+			</choose>
+			
+			<choose>
+				<when test="search2 == 1">
+					AND price BETWEEN #{min} AND #{max}
+				</when>
+				<when test="search2 == 2">
+					AND mileage BETWEEN #{min} AND #{max}
+				</when>
+				<when test="search2 == 3">
+					AND inventory BETWEEN #{min} AND #{max}
+				</when>
+				<when test="search2 == 4">
+					AND product_sales BETWEEN #{min} AND #{max}
+				</when>
+				<otherwise>
+				</otherwise>
+			</choose>
+			
+			<if test="categoryId>0">
+				AND product.category_id = #{categoryId}
+			</if>
+			
+			<if test='state != null and state != 0 and !state.equals("")'>
+				AND product_state LIKE #{state}
+			</if>
+			 
+		</where>
+		<!-- 정렬조건 -->	
+		<choose>
+			<!-- 최신상품순(상품번호 내림차순) -->
+			<when test="sort == 0">
+				ORDER BY product_id desc
+			</when>
+			<!-- 최신상품순(상품번호 오름차순) -->
+			<when test="sort == 1">
+				ORDER BY product_id
+			</when>
+			<!-- 인기순(판매량 내림차순) -->
+			<when test="sort == 2">
+				ORDER BY product_sales desc, product_id desc
+			</when>
+			<!-- 인기순(판매량 오름차순) -->
+			<when test="sort == 3">
+				ORDER BY product_sales, product_id desc
+			</when>
+			<!-- 높은가격순(내림차순) -->
+			<when test="sort == 4">
+				ORDER BY price desc, product_id desc
+			</when>
+			<!-- 낮은가격순(오름차순) -->
+			<when test="sort == 5">
+				ORDER BY price, product_id desc
+			</when>
+			<!-- 이름순(오름차순) -->
+			<when test="sort == 6">
+				ORDER BY product_name
+			</when>
+			<!-- 이름순(내림차순) -->
+			<when test="sort == 7">
+				ORDER BY product_name desc
+			</when>
+			<!-- 재고 내림차순(많은순) -->
+			<when test="sort == 8">
+				ORDER BY inventory  desc
+			</when>
+			<!-- 재고 오름차순(적은순) -->
+			<when test="sort == 9">
+				ORDER BY inventory
+			</when>
+			<!-- 마일리지 내림차순(많은순) -->
+			<when test="sort == 10">
+				ORDER BY mileage desc
+			</when>
+			<!-- 마일리지 오름차순(적은순) -->
+			<when test="sort == 11">
+				ORDER BY mileage
+			</when>
+			
+			<!-- 혹시나 order 값이 없으면 최신상품순 -->
+			<otherwise>
+				ORDER BY product_id desc
+			</otherwise>
+			
+		</choose>
+			
+	</sql>
+
+	<select id="list" resultType="Product">		
+		SELECT * FROM 
+    		(SELECT ROWNUM rnum, sub.* FROM
+        		(<include refid="search"></include>) sub)
+		<![CDATA[
+		WHERE rnum >= ((#{page} - 1) * #{perPage} + 1) AND rnum <= (#{page} * #{perPage})
+		]]>
+	</select>
+	
+	<select id="mainList" resultType="Product">		
+		SELECT * FROM 
+    		(SELECT ROWNUM rnum, sub. * FROM
+        		(SELECT * FROM product ORDER BY product_id desc) sub)
+		<![CDATA[
+		WHERE rnum <= 8
+		]]>
+		
+	</select>
+	
+	<select id="total" resultType="Integer">
+		SELECT COUNT(*)
+		FROM (<include refid="search"></include>)
+	</select>
+	
+	<insert id="add">
+		INSERT INTO product (category_id, product_id, product_name, image, price, mileage, inventory, product_info, product_sales, product_state)
+		VALUES (#{categoryId}, PRODUCT_SEQ.nextval, #{productName}, #{image}, #{price}, #{mileage}, #{inventory}, #{productInfo}, 0, #{productState})
+		
+		<selectKey keyProperty="productId" resultType="Integer" order="AFTER">
+			SELECT PRODUCT_SEQ.currval FROM DUAL
+		</selectKey>
+	</insert>
+	
+	<select id="item" resultType="Product">
+		SELECT * FROM product
+		WHERE product_id=#{productId}
+	</select>
+	
+	<update id="update">
+		UPDATE product
+		SET category_id=#{categoryId}, product_name=#{productName}, image=#{image}, price=#{price}, mileage=#{mileage}, inventory=#{inventory}, product_info=#{productInfo}, product_state=#{productState} 
+		WHERE product_id=#{productId}
+	</update>
+	
+	<update id="noUploadUpdate">
+		UPDATE product
+		SET category_id=#{categoryId}, product_name=#{productName}, price=#{price}, mileage=#{mileage}, inventory=#{inventory}, product_info=#{productInfo}, product_state=#{productState}
+		WHERE product_id=#{productId}
+	</update>
+	
+	<delete id="delete">
+		DELETE FROM product
+		WHERE product_id=#{productId}
+	</delete>
+	
+	<update id="updateSales">
+		UPDATE product
+		SET inventory = (inventory - #{orderCount}), product_sales = (product_sales + ${orderCount})
+		WHERE product_id = #{productId}
+	</update>
+	
+	<select id="cookieList" resultType="Product">
+		SELECT *
+		FROM product
+		WHERE product_id IN
+			<!-- map으로 감싸지 않고 배열을 직접 넣을 경우 컬렉션에는 array를 써줘야함 -->
+			<foreach collection="array" item="pid" open="(" close=")" separator=",">
+				#{pid}
+			</foreach>
+	</select>
+	
+	
+	
+</mapper>

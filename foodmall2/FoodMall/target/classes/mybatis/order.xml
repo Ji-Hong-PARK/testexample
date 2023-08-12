@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="order">
+	
+	<sql id="search">
+		SELECT * FROM order_info
+		
+		<choose>
+			<when test="search2 == 0">
+				ORDER BY order_id desc
+			</when>
+			<otherwise>
+				ORDER BY order_id 
+			</otherwise>
+		</choose>
+	</sql>
+	
+	<select id="userOrderList" resultType="OrderInfo">
+		SELECT *
+		FROM order_info
+		WHERE member_id = #{memberId}
+		ORDER BY order_id desc
+	</select>
+	
+	<insert id="addOrderInfo">
+		INSERT INTO order_info (order_id, member_id, destination, pay, sum_price_last, sum_mileage_last, use_mileage)
+		VALUES (ORDER_SEQ.nextval, #{memberId}, #{destination}, #{pay}, #{sumPriceLast}, #{sumMileageLast}, #{useMileage})
+		
+		<selectKey keyProperty="orderId" resultType="Integer" order="AFTER">
+			SELECT ORDER_SEQ.currval FROM DUAL
+		</selectKey>
+		
+	</insert>
+	
+	<insert id="addOrderDetail">
+		INSERT INTO order_detail (order_id, product_id, category_id, count, sum_price, sum_mileage)
+		VALUES (#{orderId}, #{productId}, #{categoryId}, #{count}, #{sumPrice}, #{sumMileage})
+	</insert>
+	
+	<select id="orderInfoItem" resultType="OrderInfo">
+		SELECT *
+		FROM order_info
+		WHERE order_id = #{orderId}
+	</select>
+	
+	<select id="orderDetailList" resultType="OrderDetail">
+		SELECT order_detail.*, image, product_name
+		FROM order_detail, product
+		WHERE order_detail.product_id = product.product_id AND order_id = #{orderId}
+	</select>
+
+	<select id="orderInfoList" resultType="OrderInfo">
+		SELECT * FROM
+			(SELECT ROWNUM rnum, sub.* FROM
+				(<include refid="search"></include>) sub)
+		<![CDATA[
+		WHERE rnum >= ((#{page} - 1) * #{perPage} + 1) AND rnum <= (#{page} * #{perPage})
+		]]>
+	</select>
+	
+	<select id="total" resultType="Integer">
+		SELECT COUNT(*)
+		FROM (SELECT * FROM order_info)
+	</select>
+
+	<update id="orderInfoUpdate">
+		UPDATE order_info
+		SET state=#{state}
+		WHERE order_id=#{orderId}
+	</update>
+
+</mapper>
